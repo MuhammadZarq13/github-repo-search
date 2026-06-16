@@ -1,9 +1,11 @@
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, inject, onScopeDispose, ref, watch, type InjectionKey } from 'vue'
 import type { AsyncState } from '@/types/async-state'
 import type { SearchResult } from '@/types/github'
 import type { GithubClient } from '@/services/github'
 import { MAX_SEARCH_RESULTS, github } from '@/services/github'
 import { GithubError, isAbortError } from '@/services/errors'
+
+export const githubClientKey: InjectionKey<GithubClient> = Symbol('github-client')
 
 const PER_PAGE = 30
 const DEBOUNCE_MS = 350
@@ -20,7 +22,7 @@ function toErrorState(error: unknown): AsyncState<SearchResult> {
   return { status: 'error', message: 'Something went wrong.', kind: 'unknown' }
 }
 
-export function useRepoSearch(client: GithubClient = github) {
+export function useRepoSearch(client: GithubClient = inject(githubClientKey, github)) {
   const query = ref('')
   const page = ref(1)
   const state = ref<AsyncState<SearchResult>>({ status: 'idle' })
