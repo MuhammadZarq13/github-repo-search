@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import {
   mdiAlertCircleOutline,
@@ -13,8 +14,51 @@ import { compactNumber, relativeTime } from '@/utils/format'
 import RepoCard from '@/components/RepoCard.vue'
 import StatePanel from '@/components/StatePanel.vue'
 
-const { query, page, state, maxPage, capped, perPage, goToPage, retry } = useRepoSearch()
+const { query, page, state, maxPage, capped, perPage, goToPage, retry, restore } = useRepoSearch()
 const { smAndDown } = useDisplay()
+const route = useRoute()
+const router = useRouter()
+
+function paramsFromState(): Record<string, string> {
+  const params: Record<string, string> = {}
+  const term = query.value.trim()
+  if (term) params.q = term
+  if (page.value > 1) params.page = String(page.value)
+  return params
+}
+
+function readQuery() {
+  const term = typeof route.query.q === 'string' ? route.query.q : ''
+  const targetPage = Math.max(1, Number(route.query.page) || 1)
+  return { term, targetPage }
+}
+
+watch(
+  () => state.value.status,
+  (status) => {
+    if (status === 'loading') return
+    const params = paramsFromState()
+    const current = readQuery()
+    if (current.term === (params.q ?? '') && current.targetPage === Number(params.page ?? 1)) return
+    void router.replace({ query: params })
+  },
+)
+
+watch(
+  () => route.query,
+  () => {
+    const { term, targetPage } = readQuery()
+    if (term === query.value.trim() && targetPage === page.value) return
+    if (!term) {
+      query.value = ''
+      return
+    }
+    restore(term, targetPage)
+  },
+)
+
+const initial = readQuery()
+if (initial.term) restore(initial.term, initial.targetPage)
 
 const status = computed(() => state.value.status)
 const items = computed(() => (state.value.status === 'success' ? state.value.data.items : []))

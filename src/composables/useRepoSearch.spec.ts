@@ -217,6 +217,31 @@ describe('useRepoSearch', () => {
     expect(search).not.toHaveBeenCalled()
   })
 
+  it('restores a query and page immediately without debouncing', async () => {
+    vi.useFakeTimers()
+    const search = vi.fn(async (_params: SearchParams) => result(5000, [summary]))
+    const s = mount(makeClient(search))
+
+    s.restore('vue', 3)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(search).toHaveBeenCalledTimes(1)
+    expect(search.mock.calls[0]?.[0]).toMatchObject({ query: 'vue', page: 3 })
+    expect(s.page.value).toBe(3)
+  })
+
+  it('clamps a restored page to the reachable cap', async () => {
+    vi.useFakeTimers()
+    const search = vi.fn(async (_params: SearchParams) => result(5000, [summary]))
+    const s = mount(makeClient(search))
+
+    s.restore('vue', 999)
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(s.page.value).toBe(33)
+    expect(search.mock.calls.at(-1)?.[0].page).toBe(33)
+  })
+
   it('aborts any in-flight request when the scope is disposed', async () => {
     vi.useFakeTimers()
     let captured: AbortSignal | undefined

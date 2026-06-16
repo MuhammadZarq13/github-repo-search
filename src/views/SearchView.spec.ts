@@ -36,8 +36,10 @@ const result: SearchResult = {
 
 let wrapper: ReturnType<typeof mount> | undefined
 
-function render(search: GithubClient['searchRepositories']) {
+async function render(search: GithubClient['searchRepositories']) {
   const client: GithubClient = { searchRepositories: search, getRepository: vi.fn() }
+  await router.push('/')
+  await router.isReady()
   wrapper = mount(SearchView, {
     global: { plugins: [vuetify, router], provide: { [githubClientKey as symbol]: client } },
   })
@@ -57,27 +59,27 @@ afterEach(() => {
 })
 
 describe('SearchView', () => {
-  it('shows the idle prompt before any search', () => {
-    expect(render(vi.fn()).text()).toContain('Search public repositories')
+  it('shows the idle prompt before any search', async () => {
+    expect((await render(vi.fn())).text()).toContain('Search public repositories')
   })
 
   it('renders results once a search resolves', async () => {
     vi.useFakeTimers()
-    const w = render(vi.fn(async () => result))
+    const w = await render(vi.fn(async () => result))
     await type(w, 'vue')
     expect(w.text()).toContain('vuejs/core')
   })
 
   it('shows the empty state when nothing matches', async () => {
     vi.useFakeTimers()
-    const w = render(vi.fn(async () => ({ total: 0, incomplete: false, items: [] })))
+    const w = await render(vi.fn(async () => ({ total: 0, incomplete: false, items: [] })))
     await type(w, 'zzzznope')
     expect(w.text()).toContain('No repositories found')
   })
 
   it('shows an error state with a retry action on failure', async () => {
     vi.useFakeTimers()
-    const w = render(
+    const w = await render(
       vi.fn(async () => {
         throw new GithubError('network', 'offline')
       }),
@@ -89,7 +91,7 @@ describe('SearchView', () => {
 
   it('shows the rate-limit state with a retry action', async () => {
     vi.useFakeTimers()
-    const w = render(
+    const w = await render(
       vi.fn(async () => {
         throw new GithubError('rateLimit', 'slow down', { retryAt: new Date(Date.now() + 60_000) })
       }),
@@ -101,7 +103,7 @@ describe('SearchView', () => {
 
   it('notes the result cap and paginates large result sets', async () => {
     vi.useFakeTimers()
-    const w = render(vi.fn(async () => ({ total: 5000, incomplete: false, items: result.items })))
+    const w = await render(vi.fn(async () => ({ total: 5000, incomplete: false, items: result.items })))
     await type(w, 'vue')
     expect(w.text()).toContain('showing the first 990')
     expect(w.find('.v-pagination').exists()).toBe(true)

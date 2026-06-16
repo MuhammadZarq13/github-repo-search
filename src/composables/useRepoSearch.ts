@@ -20,6 +20,7 @@ export function useRepoSearch(client: GithubClient = inject(githubClientKey, git
 
   let controller: AbortController | null = null
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
+  let skipNextWatch = false
 
   const maxPage = computed(() => {
     if (state.value.status !== 'success') return 1
@@ -61,6 +62,10 @@ export function useRepoSearch(client: GithubClient = inject(githubClientKey, git
   }
 
   watch(query, (value) => {
+    if (skipNextWatch) {
+      skipNextWatch = false
+      return
+    }
     clearTimeout(debounceTimer)
     if (!value.trim()) {
       controller?.abort()
@@ -88,10 +93,20 @@ export function useRepoSearch(client: GithubClient = inject(githubClientKey, git
     void run()
   }
 
+  function restore(term: string, targetPage = 1): void {
+    clearTimeout(debounceTimer)
+    page.value = Math.min(Math.max(Math.trunc(targetPage), 1), MAX_PAGE)
+    if (query.value !== term) {
+      skipNextWatch = true
+      query.value = term
+    }
+    void run()
+  }
+
   onScopeDispose(() => {
     clearTimeout(debounceTimer)
     controller?.abort()
   })
 
-  return { query, page, state, maxPage, capped, perPage: PER_PAGE, goToPage, retry }
+  return { query, page, state, maxPage, capped, perPage: PER_PAGE, goToPage, retry, restore }
 }
