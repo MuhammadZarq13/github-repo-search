@@ -3,7 +3,8 @@ import type { AsyncState } from '@/types/async-state'
 import type { SearchResult } from '@/types/github'
 import type { GithubClient } from '@/services/github'
 import { MAX_SEARCH_RESULTS, github } from '@/services/github'
-import { GithubError, isAbortError } from '@/services/errors'
+import { isAbortError } from '@/services/errors'
+import { toErrorState } from '@/utils/asyncState'
 
 export const githubClientKey: InjectionKey<GithubClient> = Symbol('github-client')
 
@@ -11,16 +12,6 @@ const PER_PAGE = 30
 const DEBOUNCE_MS = 350
 const MAX_PAGE = Math.floor(MAX_SEARCH_RESULTS / PER_PAGE)
 const REACHABLE_RESULTS = MAX_PAGE * PER_PAGE
-
-function toErrorState(error: unknown): AsyncState<SearchResult> {
-  if (error instanceof GithubError) {
-    if (error.kind === 'rateLimit' && error.retryAt) {
-      return { status: 'rateLimited', retryAt: error.retryAt, message: error.message }
-    }
-    return { status: 'error', message: error.message, kind: error.kind }
-  }
-  return { status: 'error', message: 'Something went wrong.', kind: 'unknown' }
-}
 
 export function useRepoSearch(client: GithubClient = inject(githubClientKey, github)) {
   const query = ref('')
@@ -65,7 +56,7 @@ export function useRepoSearch(client: GithubClient = inject(githubClientKey, git
       state.value = result.total === 0 ? { status: 'empty' } : { status: 'success', data: result }
     } catch (error) {
       if (isAbortError(error) || current.signal.aborted) return
-      state.value = toErrorState(error)
+      state.value = toErrorState<SearchResult>(error)
     }
   }
 
