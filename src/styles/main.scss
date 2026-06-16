@@ -4,6 +4,15 @@
   --container-max: #{$container-max};
 }
 
+// Vuetify's 0.6 medium-emphasis opacity sits just under WCAG AA contrast.
+.v-theme--light {
+  --v-medium-emphasis-opacity: 0.74;
+}
+
+.v-theme--dark {
+  --v-medium-emphasis-opacity: 0.82;
+}
+
 html,
 body,
 #app {
