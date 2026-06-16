@@ -1,0 +1,27 @@
+@use './tokens' as *;
+
+:root {
+  --container-max: #{$container-max};
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+.app-container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: $space-4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
